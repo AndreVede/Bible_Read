@@ -76,16 +76,18 @@ mod tests {
 
         let n_chapters: u8 = 30;
 
-        for i in 0..n_chapters {
+        for i in 1..n_chapters {
             let chapter_number: ChapterNumber = i.try_into().unwrap();
             let chapter: Chapter = Chapter::new(chapter_number, 40);
 
             store.add_chapter(chapter);
         }
 
-        for (index, chapter) in store.into_iter().enumerate() {
-            let num: &ChapterNumber = chapter.get_chapter_number();
-            assert_eq!(u8::from(num) as usize, index);
+        let mut num: u8 = 1;
+        for chapter in store.into_iter() {
+            let chapter_num: &ChapterNumber = chapter.get_chapter_number();
+            assert_eq!(u8::from(chapter_num), num);
+            num += 1;
         }
     }
 }
