@@ -1,4 +1,4 @@
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct BookName(String);
 
 #[derive(Debug, thiserror::Error, PartialEq)]
@@ -6,7 +6,7 @@ pub enum BookNameError {
     #[error("The book name cannot be empty")]
     Empty,
     #[error("The book name cannot be longer than 50 bytes")]
-    TooLong
+    TooLong,
 }
 
 impl std::fmt::Display for BookName {
@@ -18,7 +18,7 @@ impl std::fmt::Display for BookName {
 impl TryFrom<String> for BookName {
     type Error = BookNameError;
 
-    fn try_from(value: String)-> Result<Self, Self::Error> {
+    fn try_from(value: String) -> Result<Self, Self::Error> {
         validate(&value)?;
         Ok(Self(value))
     }
@@ -27,7 +27,7 @@ impl TryFrom<String> for BookName {
 impl TryFrom<&str> for BookName {
     type Error = BookNameError;
 
-    fn try_from(value: &str)-> Result<Self, Self::Error> {
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
         validate(value)?;
         Ok(Self(value.to_string()))
     }
@@ -68,7 +68,11 @@ mod tests {
 
     #[test]
     fn test_try_from_too_long() {
-        let book_name: BookNameError = BookName::try_from("Lorem ipsum dolor sit amet, consectetur vestibulum.").unwrap_err();
-        assert_eq!(book_name.to_string(), "The book name cannot be longer than 50 bytes");
+        let book_name: BookNameError =
+            BookName::try_from("Lorem ipsum dolor sit amet, consectetur vestibulum.").unwrap_err();
+        assert_eq!(
+            book_name.to_string(),
+            "The book name cannot be longer than 50 bytes"
+        );
     }
 }

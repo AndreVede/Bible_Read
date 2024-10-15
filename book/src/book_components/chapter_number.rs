@@ -6,7 +6,7 @@ pub enum ChapterNumberError {
     #[error("The chapter number cannot be zero")]
     Zero,
     #[error("The chapter number cannot be greater than 150")]
-    Max
+    Max,
 }
 
 impl TryFrom<u8> for ChapterNumber {
@@ -42,7 +42,7 @@ impl From<&ChapterNumber> for u8 {
 fn validate(number: &u8) -> Result<(), ChapterNumberError> {
     if *number == 0 {
         Err(ChapterNumberError::Zero)
-    } else if *number >= 150 {
+    } else if *number > 150 {
         Err(ChapterNumberError::Max)
     } else {
         Ok(())
@@ -68,13 +68,19 @@ mod tests {
     #[test]
     fn test_try_from_zero() {
         let chapter_number = ChapterNumber::try_from(&0u8).unwrap_err();
-        assert_eq!(chapter_number.to_string(), "The chapter number cannot be zero");
+        assert_eq!(
+            chapter_number.to_string(),
+            "The chapter number cannot be zero"
+        );
     }
 
     #[test]
     fn test_try_from_max() {
         let chapter_number = ChapterNumber::try_from(&151u8).unwrap_err();
-        assert_eq!(chapter_number.to_string(), "The chapter number cannot be greater than 150");
+        assert_eq!(
+            chapter_number.to_string(),
+            "The chapter number cannot be greater than 150"
+        );
     }
 
     #[test]

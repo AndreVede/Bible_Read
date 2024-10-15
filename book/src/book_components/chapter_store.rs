@@ -1,8 +1,11 @@
-use std::{collections::BTreeMap, ops::{Index, IndexMut}};
+use std::{
+    collections::BTreeMap,
+    ops::{Index, IndexMut},
+};
 
 use super::{chapter::Chapter, chapter_number::ChapterNumber};
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Default)]
 pub struct ChapterStore {
     store: BTreeMap<ChapterNumber, Chapter>,
 }
@@ -10,12 +13,12 @@ pub struct ChapterStore {
 impl ChapterStore {
     pub fn new() -> ChapterStore {
         ChapterStore {
-            store: BTreeMap::new()
+            store: BTreeMap::new(),
         }
     }
 
     pub fn add_chapter(&mut self, chapter: Chapter) {
-        self.store.insert(chapter.get_chapter_number().clone(), chapter);
+        self.store.insert(*chapter.get_chapter_number(), chapter);
     }
 
     pub fn get(&self, chapter_number: ChapterNumber) -> Option<&Chapter> {
@@ -44,14 +47,12 @@ impl Index<&ChapterNumber> for ChapterStore {
 }
 
 impl IndexMut<ChapterNumber> for ChapterStore {
-
     fn index_mut(&mut self, index: ChapterNumber) -> &mut Self::Output {
         self.store.get_mut(&index).unwrap()
     }
 }
 
 impl IndexMut<&ChapterNumber> for ChapterStore {
-
     fn index_mut(&mut self, index: &ChapterNumber) -> &mut Self::Output {
         &mut self[*index]
     }
@@ -68,6 +69,8 @@ impl<'a> IntoIterator for &'a ChapterStore {
 
 #[cfg(test)]
 mod tests {
+    use crate::book_components::max_verse::MaxVerse;
+
     use super::*;
 
     #[test]
@@ -78,7 +81,7 @@ mod tests {
 
         for i in 1..n_chapters {
             let chapter_number: ChapterNumber = i.try_into().unwrap();
-            let chapter: Chapter = Chapter::new(chapter_number, 40);
+            let chapter: Chapter = Chapter::new(chapter_number, MaxVerse::try_from(40u8).unwrap());
 
             store.add_chapter(chapter);
         }

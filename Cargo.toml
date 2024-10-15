@@ -1,2 +1,3 @@
 [workspace]
 members = ["bible", "book", "read"]
+resolver = "2"
