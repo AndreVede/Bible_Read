@@ -5,7 +5,7 @@ use std::{
     ops::{Index, IndexMut},
 };
 
-mod bible_enum;
+pub mod bible_enum;
 mod constants;
 mod init_bible;
 
