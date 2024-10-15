@@ -69,7 +69,7 @@ impl<'a> IntoIterator for &'a ChapterStore {
 
 #[cfg(test)]
 mod tests {
-    use crate::book_components::max_verse::MaxVerse;
+    use crate::book_components::verse::Verse;
 
     use super::*;
 
@@ -81,7 +81,7 @@ mod tests {
 
         for i in 1..n_chapters {
             let chapter_number: ChapterNumber = i.try_into().unwrap();
-            let chapter: Chapter = Chapter::new(chapter_number, MaxVerse::try_from(40u8).unwrap());
+            let chapter: Chapter = Chapter::new(chapter_number, Verse::try_from(40u8).unwrap());
 
             store.add_chapter(chapter);
         }

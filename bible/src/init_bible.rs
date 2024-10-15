@@ -107,13 +107,13 @@ pub fn init_books() -> Vec<Book> {
     for (index_book, book) in bible_json.into_iter().enumerate() {
         let mut chapter_store = ChapterStore::new();
 
-        for (index, max_verse_str) in book.iter().enumerate() {
-            let max_verse: u8 = max_verse_str.parse().unwrap();
+        for (index, verse_str) in book.iter().enumerate() {
+            let verse: u8 = verse_str.parse().unwrap();
             let chapter_number: u8 = index as u8 + 1u8;
 
             chapter_store.add_chapter(Chapter::new(
                 chapter_number.try_into().unwrap(),
-                max_verse.try_into().unwrap(),
+                verse.try_into().unwrap(),
             ));
         }
 

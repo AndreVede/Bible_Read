@@ -11,13 +11,13 @@ mod init_bible;
 
 use bible_enum::BibleEnum;
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Bible {
     books: BTreeMap<BibleEnum, Book>,
 }
 
-impl Bible {
-    pub fn new() -> Bible {
+impl Default for Bible {
+    fn default() -> Self {
         let mut books = BTreeMap::new();
         let data: Vec<Book> = init_books();
 
@@ -97,6 +97,12 @@ impl Bible {
     }
 }
 
+impl Bible {
+    pub fn new() -> Bible {
+        Default::default()
+    }
+}
+
 impl Index<BibleEnum> for Bible {
     type Output = Book;
 
@@ -136,7 +142,7 @@ impl<'a> IntoIterator for &'a Bible {
 
 #[cfg(test)]
 mod tests {
-    use book::book_components::{chapter_number::ChapterNumber, max_verse::MaxVerse};
+    use book::book_components::{chapter_number::ChapterNumber, verse::Verse};
 
     use super::*;
 
@@ -149,8 +155,8 @@ mod tests {
                 .chapters
                 .get(ChapterNumber::try_from(1u8).unwrap())
                 .unwrap()
-                .get_max_verse(),
-            &MaxVerse::try_from(31u8).unwrap()
+                .get_verse(),
+            &Verse::try_from(31u8).unwrap()
         );
     }
 }
