@@ -155,7 +155,7 @@ mod tests {
                 .chapters
                 .get(ChapterNumber::try_from(1u8).unwrap())
                 .unwrap()
-                .get_verse(),
+                .get_max_verse(),
             &Verse::try_from(31u8).unwrap()
         );
     }
