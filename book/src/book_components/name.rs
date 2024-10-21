@@ -1,4 +1,6 @@
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Serialize, Deserialize)]
 pub struct BookName(String);
 
 #[derive(Debug, thiserror::Error, PartialEq)]

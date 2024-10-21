@@ -3,9 +3,11 @@ use std::{
     ops::{Index, IndexMut},
 };
 
+use serde::{Deserialize, Serialize};
+
 use super::{chapter::Chapter, chapter_number::ChapterNumber};
 
-#[derive(Debug, PartialEq, Clone, Default)]
+#[derive(Debug, PartialEq, Clone, Default, Serialize, Deserialize)]
 pub struct ChapterStore {
     store: BTreeMap<ChapterNumber, Chapter>,
 }

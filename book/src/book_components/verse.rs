@@ -1,4 +1,6 @@
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize)]
 pub struct Verse(u8);
 
 #[derive(Debug, thiserror::Error)]
