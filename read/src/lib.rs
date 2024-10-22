@@ -1,202 +1,163 @@
-use book::{
-    book_components::{chapter::Chapter, chapter_number::ChapterNumber, verse::Verse},
-    Book,
+mod file_operations;
+pub mod reading;
+
+use std::{
+    sync::{
+        mpsc::{sync_channel, Receiver, SyncSender},
+        Arc, Mutex,
+    },
+    thread::spawn,
 };
-use serde::{Deserialize, Serialize};
 
-#[derive(Debug, thiserror::Error, PartialEq)]
-pub enum ReadingError {
-    #[error("This chapter is not listed in the book")]
-    ChapterNotInBook,
-    #[error("This verse cannot be in this chapter")]
-    VerseNotInChapter,
+use file_operations::{get_reading_in_file, save_reading_in_file};
+use reading::Reading;
+
+#[derive(Debug, Clone)]
+enum Command {
+    SaveReadingInFile {
+        path: Arc<String>,
+        response_channel: SyncSender<Result<(), SaveServerError>>,
+    },
+    GetReadingFromFile {
+        path: Arc<String>,
+        response_channel: SyncSender<Result<Reading, SaveServerError>>,
+    },
+    GetCurrentReading {
+        response_channel: SyncSender<Arc<Mutex<Option<Reading>>>>,
+    },
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Reading {
-    current_book: Book,
-    current_chapter: ChapterNumber,
-    current_verse: Verse,
+#[derive(Debug, thiserror::Error)]
+pub enum SaveServerError {
+    #[error("The save server is overloaded")]
+    OverloadedError,
+    #[error("Saving in file failed")]
+    FailedToSave,
+    #[error("Getting the save from file failed")]
+    FailedToGetSave,
 }
 
-impl Reading {
-    pub fn new(book: Book, chapter: ChapterNumber, verse: Verse) -> Result<Reading, ReadingError> {
-        Self::validate_fields(&book, &chapter, &verse)?;
+#[derive(Clone)]
+pub struct ReadingSaveClient {
+    path: Arc<String>,
+    sender: SyncSender<Command>,
+}
 
-        Ok(Reading {
-            current_book: book,
-            current_chapter: chapter,
-            current_verse: verse,
-        })
+impl ReadingSaveClient {
+    pub fn get_reading(&self) -> Result<Reading, SaveServerError> {
+        let (response_sender, response_receiver) = sync_channel(1);
+        self.sender
+            .try_send(Command::GetReadingFromFile {
+                path: self.path.clone(),
+                response_channel: response_sender,
+            })
+            .map_err(|_| SaveServerError::OverloadedError)?;
+
+        let reading = response_receiver.recv().unwrap()?;
+
+        Ok(reading)
     }
 
-    pub fn current_book(&self) -> &Book {
-        &self.current_book
-    }
+    pub fn save_reading(&self) -> Result<(), SaveServerError> {
+        let (response_sender, response_receiver) = sync_channel(1);
+        self.sender
+            .try_send(Command::SaveReadingInFile {
+                path: self.path.clone(),
+                response_channel: response_sender,
+            })
+            .map_err(|_| SaveServerError::OverloadedError)?;
 
-    pub fn current_chapter(&self) -> &ChapterNumber {
-        &self.current_chapter
-    }
-
-    pub fn current_verse(&self) -> &Verse {
-        &self.current_verse
-    }
-
-    pub fn modify_reading(
-        &mut self,
-        book: Book,
-        chapter: ChapterNumber,
-        verse: Verse,
-    ) -> Result<(), ReadingError> {
-        Self::validate_fields(&book, &chapter, &verse)?;
-
-        *self = Reading {
-            current_book: book,
-            current_chapter: chapter,
-            current_verse: verse,
-        };
+        response_receiver.recv().unwrap()?;
 
         Ok(())
     }
 
-    pub fn set_current_book(&mut self, book: Book) -> Result<(), ReadingError> {
-        Self::validate_fields(&book, &self.current_chapter, &self.current_verse)?;
+    pub fn get_current_reading(&self) -> Result<Arc<Mutex<Option<Reading>>>, SaveServerError> {
+        let (response_sender, response_receiver) = sync_channel(1);
+        self.sender
+            .try_send(Command::GetCurrentReading {
+                response_channel: response_sender,
+            })
+            .map_err(|_| SaveServerError::OverloadedError)?;
 
-        self.current_book = book;
-
-        Ok(())
+        Ok(response_receiver.recv().unwrap())
     }
+}
 
-    pub fn set_current_chapter(&mut self, chapter: ChapterNumber) -> Result<(), ReadingError> {
-        Self::validate_fields(&self.current_book, &chapter, &self.current_verse)?;
-
-        self.current_chapter = chapter;
-
-        Ok(())
+pub fn launch_reading(capacity: usize, path: String) -> ReadingSaveClient {
+    let (sender, receiver) = sync_channel(capacity);
+    spawn(move || server_reading(receiver));
+    ReadingSaveClient {
+        sender,
+        path: Arc::new(path),
     }
+}
 
-    pub fn set_current_verse(&mut self, verse: Verse) -> Result<(), ReadingError> {
-        let chapter: &Chapter = self
-            .current_book
-            .chapters
-            .get(self.current_chapter)
-            .unwrap();
+fn server_reading(receiver: Receiver<Command>) {
+    // The current Reading Value
+    let reading: Arc<Mutex<Option<Reading>>> = Arc::new(Mutex::new(None));
 
-        Self::validate_verse(chapter, &verse)?;
+    loop {
+        match receiver.recv() {
+            Ok(Command::GetReadingFromFile {
+                path,
+                response_channel,
+            }) => {
+                match get_reading_in_file(path) {
+                    Ok(function_result) => {
+                        if let Some(reading_result) = function_result {
+                            // Save the reading value in current value
+                            if let Ok(ref mut reading_value) = reading.try_lock() {
+                                **reading_value = Some(reading_result.clone());
+                            }
 
-        self.current_verse = verse;
+                            let _ = response_channel.send(Ok(reading_result));
+                        }
 
-        Ok(())
-    }
+                        let _ = response_channel.send(Err(SaveServerError::FailedToGetSave));
+                    }
+                    Err(_) => response_channel
+                        .send(Err(SaveServerError::FailedToGetSave))
+                        .unwrap(),
+                }
+            }
+            Ok(Command::SaveReadingInFile {
+                path,
+                response_channel,
+            }) => {
+                let reading_lock = reading.lock().unwrap();
 
-    fn validate_fields(
-        book: &Book,
-        chapter: &ChapterNumber,
-        verse: &Verse,
-    ) -> Result<(), ReadingError> {
-        if let Some(chapter_in_book) = book.chapters.get(*chapter) {
-            Self::validate_verse(chapter_in_book, verse)
-        } else {
-            Err(ReadingError::ChapterNotInBook)
-        }
-    }
-
-    fn validate_verse(chapter: &Chapter, verse: &Verse) -> Result<(), ReadingError> {
-        if u8::from(verse) > u8::from(chapter.get_max_verse()) {
-            Err(ReadingError::VerseNotInChapter)
-        } else {
-            Ok(())
+                match *reading_lock {
+                    Some(ref reading_value) => {
+                        if save_reading_in_file(path, reading_value).is_ok() {
+                            let _ = response_channel.send(Ok(()));
+                        } else {
+                            // Return failed
+                            let _ = response_channel.send(Err(SaveServerError::FailedToSave));
+                        }
+                    }
+                    None => {
+                        // Return Not Possible
+                        let _ = response_channel.send(Err(SaveServerError::OverloadedError));
+                    }
+                }
+            }
+            Ok(Command::GetCurrentReading { response_channel }) => {
+                let _ = response_channel.send(reading.clone());
+            }
+            Err(_) => {
+                break;
+            }
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use book::book_components::{
-        chapter::Chapter, chapter_number::ChapterNumber, chapter_store::ChapterStore,
-        name::BookName,
-    };
-
     use super::*;
 
     #[test]
-    fn test_create_reading_and_modify() {
-        let mut book: Book = Book {
-            name: "a book".try_into().unwrap(),
-            chapters: ChapterStore::new(),
-        };
-
-        let chapter_number = ChapterNumber::try_from(1u8).unwrap();
-
-        let chapter = Chapter::new(chapter_number, Verse::try_from(10u8).unwrap());
-
-        book.chapters.add_chapter(chapter);
-
-        // add another chapter to test the init
-        book.chapters.add_chapter(Chapter::new(
-            ChapterNumber::try_from(2u8).unwrap(),
-            Verse::try_from(6u8).unwrap(),
-        ));
-
-        let verse = Verse::try_from(5u8).unwrap();
-
-        let mut reading = Reading::new(
-            book.clone(),
-            ChapterNumber::try_from(2u8).unwrap(),
-            verse.clone(),
-        )
-        .unwrap();
-
-        reading.modify_reading(book, chapter_number, verse).unwrap();
-
-        assert_eq!(reading.current_verse(), &verse);
-        assert_eq!(reading.current_chapter(), &chapter_number);
-        assert_eq!(
-            reading.current_book().name,
-            BookName::try_from("a book").unwrap()
-        );
-    }
-
-    #[test]
-    fn test_verse_not_in_chapter() {
-        let mut book: Book = Book {
-            name: "a book".try_into().unwrap(),
-            chapters: ChapterStore::new(),
-        };
-
-        let chapter_number = ChapterNumber::try_from(1u8).unwrap();
-
-        let chapter = Chapter::new(chapter_number, Verse::try_from(10u8).unwrap());
-
-        book.chapters.add_chapter(chapter);
-
-        let verse = Verse::try_from(11u8).unwrap();
-
-        let error = Reading::new(book, chapter_number, verse).unwrap_err();
-
-        assert_eq!(error.to_string(), "This verse cannot be in this chapter");
-    }
-
-    #[test]
-    fn test_chapter_not_in_book() {
-        let mut book: Book = Book {
-            name: "a book".try_into().unwrap(),
-            chapters: ChapterStore::new(),
-        };
-
-        let chapter_number = ChapterNumber::try_from(1u8).unwrap();
-
-        let chapter = Chapter::new(
-            ChapterNumber::try_from(2u8).unwrap(),
-            Verse::try_from(10u8).unwrap(),
-        );
-
-        book.chapters.add_chapter(chapter);
-
-        let verse = Verse::try_from(10u8).unwrap();
-
-        let error = Reading::new(book, chapter_number, verse).unwrap_err();
-
-        assert_eq!(error.to_string(), "This chapter is not listed in the book");
+    fn test_that_work() {
+        todo!();
     }
 }
