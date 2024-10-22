@@ -25,6 +25,10 @@ enum Command {
     GetCurrentReading {
         response_channel: SyncSender<Arc<Mutex<Option<Reading>>>>,
     },
+    SetCurrentReading {
+        reading: Reading,
+        response_channel: SyncSender<()>,
+    },
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -35,6 +39,8 @@ pub enum SaveServerError {
     FailedToSave,
     #[error("Getting the save from file failed")]
     FailedToGetSave,
+    #[error("No data to save, reading is none")]
+    NoDataToSave,
 }
 
 #[derive(Clone)]
@@ -44,7 +50,7 @@ pub struct ReadingSaveClient {
 }
 
 impl ReadingSaveClient {
-    pub fn get_reading(&self) -> Result<Reading, SaveServerError> {
+    pub fn get_reading_from_file(&self) -> Result<Reading, SaveServerError> {
         let (response_sender, response_receiver) = sync_channel(1);
         self.sender
             .try_send(Command::GetReadingFromFile {
@@ -58,7 +64,7 @@ impl ReadingSaveClient {
         Ok(reading)
     }
 
-    pub fn save_reading(&self) -> Result<(), SaveServerError> {
+    pub fn save_reading_in_file(&self) -> Result<(), SaveServerError> {
         let (response_sender, response_receiver) = sync_channel(1);
         self.sender
             .try_send(Command::SaveReadingInFile {
@@ -82,6 +88,18 @@ impl ReadingSaveClient {
 
         Ok(response_receiver.recv().unwrap())
     }
+
+    pub fn set_current_reading(&self, reading: Reading) -> Result<(), SaveServerError> {
+        let (response_sender, response_receiver) = sync_channel(1);
+        self.sender
+            .try_send(Command::SetCurrentReading {
+                reading,
+                response_channel: response_sender,
+            })
+            .map_err(|_| SaveServerError::OverloadedError)?;
+
+        Ok(response_receiver.recv().unwrap())
+    }
 }
 
 pub fn launch_reading(capacity: usize, path: String) -> ReadingSaveClient {
@@ -95,7 +113,7 @@ pub fn launch_reading(capacity: usize, path: String) -> ReadingSaveClient {
 
 fn server_reading(receiver: Receiver<Command>) {
     // The current Reading Value
-    let reading: Arc<Mutex<Option<Reading>>> = Arc::new(Mutex::new(None));
+    let current_reading: Arc<Mutex<Option<Reading>>> = Arc::new(Mutex::new(None));
 
     loop {
         match receiver.recv() {
@@ -107,7 +125,7 @@ fn server_reading(receiver: Receiver<Command>) {
                     Ok(function_result) => {
                         if let Some(reading_result) = function_result {
                             // Save the reading value in current value
-                            if let Ok(ref mut reading_value) = reading.try_lock() {
+                            if let Ok(ref mut reading_value) = current_reading.try_lock() {
                                 **reading_value = Some(reading_result.clone());
                             }
 
@@ -125,7 +143,7 @@ fn server_reading(receiver: Receiver<Command>) {
                 path,
                 response_channel,
             }) => {
-                let reading_lock = reading.lock().unwrap();
+                let reading_lock = current_reading.lock().unwrap();
 
                 match *reading_lock {
                     Some(ref reading_value) => {
@@ -137,13 +155,23 @@ fn server_reading(receiver: Receiver<Command>) {
                         }
                     }
                     None => {
-                        // Return Not Possible
-                        let _ = response_channel.send(Err(SaveServerError::OverloadedError));
+                        // No data
+                        let _ = response_channel.send(Err(SaveServerError::NoDataToSave));
                     }
                 }
             }
             Ok(Command::GetCurrentReading { response_channel }) => {
-                let _ = response_channel.send(reading.clone());
+                let _ = response_channel.send(current_reading.clone());
+            }
+            Ok(Command::SetCurrentReading {
+                reading,
+                response_channel,
+            }) => {
+                let mut reading_lock = current_reading.lock().unwrap();
+
+                *reading_lock = Some(reading);
+
+                let _ = response_channel.send(());
             }
             Err(_) => {
                 break;
@@ -154,10 +182,45 @@ fn server_reading(receiver: Receiver<Command>) {
 
 #[cfg(test)]
 mod tests {
+    use book::{
+        book_components::{
+            chapter::Chapter, chapter_number::ChapterNumber, chapter_store::ChapterStore,
+            verse::Verse,
+        },
+        Book,
+    };
+
     use super::*;
 
     #[test]
     fn test_that_work() {
-        todo!();
+        let client = launch_reading(1, "test1.ron".to_string());
+
+        let mut book: Book = Book {
+            name: "a book again".try_into().unwrap(),
+            chapters: ChapterStore::new(),
+        };
+
+        let chapter: Chapter = Chapter::new(
+            ChapterNumber::try_from(1u8).unwrap(),
+            Verse::try_from(1u8).unwrap(),
+        );
+
+        book.chapters.add_chapter(chapter);
+
+        let reading = Reading::new(
+            book,
+            ChapterNumber::try_from(1u8).unwrap(),
+            Verse::try_from(1u8).unwrap(),
+        )
+        .unwrap();
+
+        let _ = client.set_current_reading(reading.clone());
+
+        let current_reading = client.get_current_reading().unwrap();
+
+        let current_reading_lock = current_reading.lock().unwrap();
+
+        assert_eq!(Some(reading), *current_reading_lock);
     }
 }
