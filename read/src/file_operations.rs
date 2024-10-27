@@ -6,7 +6,7 @@ use std::{
 
 use crate::reading::Reading;
 
-pub fn get_reading_in_file(path: Arc<String>) -> std::io::Result<Option<Reading>> {
+pub fn get_reading_in_file(path: Arc<std::path::PathBuf>) -> std::io::Result<Option<Reading>> {
     let mut file = OpenOptions::new().read(true).open(&*path)?;
 
     let mut read_file = String::new();
@@ -20,7 +20,10 @@ pub fn get_reading_in_file(path: Arc<String>) -> std::io::Result<Option<Reading>
     Ok(None)
 }
 
-pub fn save_reading_in_file(path: Arc<String>, reading: &Reading) -> std::io::Result<()> {
+pub fn save_reading_in_file(
+    path: Arc<std::path::PathBuf>,
+    reading: &Reading,
+) -> std::io::Result<()> {
     let mut file = OpenOptions::new()
         .write(true)
         .create(true)
@@ -48,7 +51,7 @@ mod tests {
 
     #[test]
     fn test_work() {
-        let path: Arc<String> = Arc::new("test.ron".into());
+        let path: Arc<std::path::PathBuf> = Arc::new("test.ron".into());
 
         let verse = Verse::try_from(2u8).unwrap();
         let chapter_number = ChapterNumber::try_from(1u8).unwrap();

@@ -15,11 +15,11 @@ use reading::Reading;
 #[derive(Debug, Clone)]
 enum Command {
     SaveReadingInFile {
-        path: Arc<String>,
+        path: Arc<std::path::PathBuf>,
         response_channel: SyncSender<Result<(), SaveServerError>>,
     },
     GetReadingFromFile {
-        path: Arc<String>,
+        path: Arc<std::path::PathBuf>,
         response_channel: SyncSender<Result<Reading, SaveServerError>>,
     },
     GetCurrentReading {
@@ -45,7 +45,7 @@ pub enum SaveServerError {
 
 #[derive(Clone)]
 pub struct ReadingSaveClient {
-    path: Arc<String>,
+    path: Arc<std::path::PathBuf>,
     sender: SyncSender<Command>,
 }
 
@@ -98,11 +98,12 @@ impl ReadingSaveClient {
             })
             .map_err(|_| SaveServerError::OverloadedError)?;
 
-        Ok(response_receiver.recv().unwrap())
+        response_receiver.recv().unwrap();
+        Ok(())
     }
 }
 
-pub fn launch_reading(capacity: usize, path: String) -> ReadingSaveClient {
+pub fn launch_reading(capacity: usize, path: std::path::PathBuf) -> ReadingSaveClient {
     let (sender, receiver) = sync_channel(capacity);
     spawn(move || server_reading(receiver));
     ReadingSaveClient {
@@ -194,7 +195,7 @@ mod tests {
 
     #[test]
     fn test_that_work() {
-        let client = launch_reading(1, "test1.ron".to_string());
+        let client = launch_reading(1, "test1.ron".into());
 
         let mut book: Book = Book {
             name: "a book again".try_into().unwrap(),
