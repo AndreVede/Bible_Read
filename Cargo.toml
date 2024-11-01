@@ -1,3 +1,3 @@
 [workspace]
-members = ["bible", "book", "engine", "read", "widget"]
+members = ["bible", "book", "read-bible", "read", "widget"]
 resolver = "2"

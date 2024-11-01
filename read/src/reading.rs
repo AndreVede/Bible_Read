@@ -19,6 +19,18 @@ pub struct Reading {
     current_verse: Verse,
 }
 
+impl std::fmt::Display for Reading {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{} {}:{}",
+            self.current_book.name,
+            u8::from(self.current_chapter),
+            u8::from(self.current_verse)
+        )
+    }
+}
+
 impl Reading {
     pub fn new(book: Book, chapter: ChapterNumber, verse: Verse) -> Result<Reading, ReadingError> {
         Self::validate_fields(&book, &chapter, &verse)?;
@@ -113,7 +125,9 @@ impl Reading {
 #[cfg(test)]
 mod tests {
     use book::book_components::{
-        chapter::Chapter, chapter_number::ChapterNumber, chapter_store::ChapterStore,
+        chapter::Chapter,
+        chapter_number::{self, ChapterNumber},
+        chapter_store::ChapterStore,
         name::BookName,
     };
 
@@ -198,5 +212,25 @@ mod tests {
         let error = Reading::new(book, chapter_number, verse).unwrap_err();
 
         assert_eq!(error.to_string(), "This chapter is not listed in the book");
+    }
+
+    #[test]
+    fn test_display() {
+        let mut book: Book = Book {
+            name: "Genesis".try_into().unwrap(),
+            chapters: ChapterStore::new(),
+        };
+
+        let chapter_number = ChapterNumber::try_from(1u8).unwrap();
+
+        let verse = Verse::try_from(1u8).unwrap();
+
+        let chapter = Chapter::new(chapter_number, verse);
+
+        book.chapters.add_chapter(chapter);
+
+        let reading = Reading::new(book, chapter_number, verse).unwrap();
+
+        assert_eq!(reading.to_string(), "Genesis 1:1");
     }
 }
