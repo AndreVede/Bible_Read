@@ -22,9 +22,9 @@ pub enum Commands {
     /// Set a status of reading
     Set(cmd::set::SetArgs),
     /// Go to the next resource
-    Next(cmd::next::NextArgs),
+    Next(cmd::next_previous::NextPreviousArgs),
     /// Go to the previous resource
-    Previous(cmd::previous::PreviousArgs),
+    Previous(cmd::next_previous::NextPreviousArgs),
 }
 
 pub fn create_doc_man() -> std::io::Result<()> {
