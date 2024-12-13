@@ -183,13 +183,8 @@ fn server_reading(receiver: Receiver<Command>) {
 
 #[cfg(test)]
 mod tests {
-    use book::{
-        book_components::{
-            chapter::Chapter, chapter_number::ChapterNumber, chapter_store::ChapterStore,
-            verse::Verse,
-        },
-        Book,
-    };
+    use bible::bible_enum::BibleEnum;
+    use book::book_components::{chapter_number::ChapterNumber, verse::Verse};
 
     use super::*;
 
@@ -197,20 +192,8 @@ mod tests {
     fn test_that_work() {
         let client = launch_reading(1, "test1.ron".into());
 
-        let mut book: Book = Book {
-            name: "a book again".try_into().unwrap(),
-            chapters: ChapterStore::new(),
-        };
-
-        let chapter: Chapter = Chapter::new(
-            ChapterNumber::try_from(1u8).unwrap(),
-            Verse::try_from(1u8).unwrap(),
-        );
-
-        book.chapters.add_chapter(chapter);
-
         let reading = Reading::new(
-            book,
+            BibleEnum::Genesis,
             ChapterNumber::try_from(1u8).unwrap(),
             Verse::try_from(1u8).unwrap(),
         )

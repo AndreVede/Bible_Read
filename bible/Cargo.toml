@@ -4,7 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-"book" = {path = "../book"}
+book = {path = "../book"}
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-"thiserror" = "1"
+lazy_static = "1"
+strum = { version = "0.26", features = ["derive"] }
+thiserror = "2"

@@ -1,6 +1,10 @@
+use serde::{Deserialize, Serialize};
+use strum::EnumIter;
+
 macro_rules! make_bible_enum {
     ($error: ident ($message: literal), $enum_name: ident {$($book_ident: ident),* $(,)*}) => {
-        #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, EnumIter, Serialize, Deserialize)]
+        #[serde(rename_all = "kebab-case")]
         pub enum $enum_name {
             $($book_ident),*
         }

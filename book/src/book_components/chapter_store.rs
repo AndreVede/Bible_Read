@@ -30,6 +30,13 @@ impl ChapterStore {
     pub fn get_mut(&mut self, chapter_number: ChapterNumber) -> Option<&mut Chapter> {
         self.store.get_mut(&chapter_number)
     }
+
+    pub fn range(
+        &self,
+        range: core::ops::Range<ChapterNumber>,
+    ) -> std::collections::btree_map::Range<ChapterNumber, Chapter> {
+        self.store.range(range)
+    }
 }
 
 impl Index<ChapterNumber> for ChapterStore {

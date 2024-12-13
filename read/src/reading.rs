@@ -1,3 +1,4 @@
+use bible::{bible_enum::BibleEnum, BIBLE};
 use book::{
     book_components::{chapter::Chapter, chapter_number::ChapterNumber, verse::Verse},
     Book,
@@ -14,7 +15,7 @@ pub enum ReadingError {
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct Reading {
-    current_book: Book,
+    current_book: BibleEnum,
     current_chapter: ChapterNumber,
     current_verse: Verse,
 }
@@ -24,7 +25,7 @@ impl std::fmt::Display for Reading {
         write!(
             f,
             "{} {}:{}",
-            self.current_book.name,
+            BIBLE[self.current_book].name,
             u8::from(self.current_chapter),
             u8::from(self.current_verse)
         )
@@ -32,7 +33,11 @@ impl std::fmt::Display for Reading {
 }
 
 impl Reading {
-    pub fn new(book: Book, chapter: ChapterNumber, verse: Verse) -> Result<Reading, ReadingError> {
+    pub fn new(
+        book: BibleEnum,
+        chapter: ChapterNumber,
+        verse: Verse,
+    ) -> Result<Reading, ReadingError> {
         Self::validate_fields(&book, &chapter, &verse)?;
 
         Ok(Reading {
@@ -42,7 +47,7 @@ impl Reading {
         })
     }
 
-    pub fn current_book(&self) -> &Book {
+    pub fn current_book(&self) -> &BibleEnum {
         &self.current_book
     }
 
@@ -56,7 +61,7 @@ impl Reading {
 
     pub fn modify_reading(
         &mut self,
-        book: Book,
+        book: BibleEnum,
         chapter: ChapterNumber,
         verse: Verse,
     ) -> Result<(), ReadingError> {
@@ -71,7 +76,7 @@ impl Reading {
         Ok(())
     }
 
-    pub fn set_current_book(&mut self, book: Book) -> Result<(), ReadingError> {
+    pub fn set_current_book(&mut self, book: BibleEnum) -> Result<(), ReadingError> {
         Self::validate_fields(&book, &self.current_chapter, &self.current_verse)?;
 
         self.current_book = book;
@@ -88,11 +93,8 @@ impl Reading {
     }
 
     pub fn set_current_verse(&mut self, verse: Verse) -> Result<(), ReadingError> {
-        let chapter: &Chapter = self
-            .current_book
-            .chapters
-            .get(self.current_chapter)
-            .unwrap();
+        let current_book: Book = BIBLE[self.current_book].clone();
+        let chapter: &Chapter = current_book.chapters.get(self.current_chapter).unwrap();
 
         Self::validate_verse(chapter, &verse)?;
 
@@ -102,11 +104,13 @@ impl Reading {
     }
 
     fn validate_fields(
-        book: &Book,
+        book: &BibleEnum,
         chapter: &ChapterNumber,
         verse: &Verse,
     ) -> Result<(), ReadingError> {
-        if let Some(chapter_in_book) = book.chapters.get(*chapter) {
+        let current_book: Book = BIBLE[book].clone();
+
+        if let Some(chapter_in_book) = current_book.chapters.get(*chapter) {
             Self::validate_verse(chapter_in_book, verse)
         } else {
             Err(ReadingError::ChapterNotInBook)
@@ -125,9 +129,7 @@ impl Reading {
 #[cfg(test)]
 mod tests {
     use book::book_components::{
-        chapter::Chapter,
-        chapter_number::{self, ChapterNumber},
-        chapter_store::ChapterStore,
+        chapter::Chapter, chapter_number::ChapterNumber, chapter_store::ChapterStore,
         name::BookName,
     };
 
@@ -135,101 +137,58 @@ mod tests {
 
     #[test]
     fn test_create_reading_and_modify() {
-        let mut book: Book = Book {
-            name: "a book".try_into().unwrap(),
-            chapters: ChapterStore::new(),
-        };
-
         let chapter_number = ChapterNumber::try_from(1u8).unwrap();
-
-        let chapter = Chapter::new(chapter_number, Verse::try_from(10u8).unwrap());
-
-        book.chapters.add_chapter(chapter);
-
-        // add another chapter to test the init
-        book.chapters.add_chapter(Chapter::new(
-            ChapterNumber::try_from(2u8).unwrap(),
-            Verse::try_from(6u8).unwrap(),
-        ));
 
         let verse = Verse::try_from(5u8).unwrap();
 
         let mut reading = Reading::new(
-            book.clone(),
+            BibleEnum::Exodus,
             ChapterNumber::try_from(2u8).unwrap(),
-            verse.clone(),
+            verse,
         )
         .unwrap();
 
-        reading.modify_reading(book, chapter_number, verse).unwrap();
+        reading
+            .modify_reading(BibleEnum::Exodus, chapter_number, verse)
+            .unwrap();
 
         assert_eq!(reading.current_verse(), &verse);
         assert_eq!(reading.current_chapter(), &chapter_number);
         assert_eq!(
-            reading.current_book().name,
-            BookName::try_from("a book").unwrap()
+            BIBLE[reading.current_book].name,
+            BookName::try_from("Exodus").unwrap()
         );
     }
 
     #[test]
     fn test_verse_not_in_chapter() {
-        let mut book: Book = Book {
-            name: "a book".try_into().unwrap(),
-            chapters: ChapterStore::new(),
-        };
-
         let chapter_number = ChapterNumber::try_from(1u8).unwrap();
 
-        let chapter = Chapter::new(chapter_number, Verse::try_from(10u8).unwrap());
+        let verse = Verse::try_from(111u8).unwrap();
 
-        book.chapters.add_chapter(chapter);
-
-        let verse = Verse::try_from(11u8).unwrap();
-
-        let error = Reading::new(book, chapter_number, verse).unwrap_err();
+        let error = Reading::new(BibleEnum::Exodus, chapter_number, verse).unwrap_err();
 
         assert_eq!(error.to_string(), "This verse cannot be in this chapter");
     }
 
     #[test]
     fn test_chapter_not_in_book() {
-        let mut book: Book = Book {
-            name: "a book".try_into().unwrap(),
-            chapters: ChapterStore::new(),
-        };
-
-        let chapter_number = ChapterNumber::try_from(1u8).unwrap();
-
-        let chapter = Chapter::new(
-            ChapterNumber::try_from(2u8).unwrap(),
-            Verse::try_from(10u8).unwrap(),
-        );
-
-        book.chapters.add_chapter(chapter);
+        let chapter_number = ChapterNumber::try_from(111u8).unwrap();
 
         let verse = Verse::try_from(10u8).unwrap();
 
-        let error = Reading::new(book, chapter_number, verse).unwrap_err();
+        let error = Reading::new(BibleEnum::Exodus, chapter_number, verse).unwrap_err();
 
         assert_eq!(error.to_string(), "This chapter is not listed in the book");
     }
 
     #[test]
     fn test_display() {
-        let mut book: Book = Book {
-            name: "Genesis".try_into().unwrap(),
-            chapters: ChapterStore::new(),
-        };
-
         let chapter_number = ChapterNumber::try_from(1u8).unwrap();
 
         let verse = Verse::try_from(1u8).unwrap();
 
-        let chapter = Chapter::new(chapter_number, verse);
-
-        book.chapters.add_chapter(chapter);
-
-        let reading = Reading::new(book, chapter_number, verse).unwrap();
+        let reading = Reading::new(BibleEnum::Genesis, chapter_number, verse).unwrap();
 
         assert_eq!(reading.to_string(), "Genesis 1:1");
     }

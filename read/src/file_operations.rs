@@ -39,13 +39,8 @@ pub fn save_reading_in_file(
 
 #[cfg(test)]
 mod tests {
-    use book::{
-        book_components::{
-            chapter::Chapter, chapter_number::ChapterNumber, chapter_store::ChapterStore,
-            verse::Verse,
-        },
-        Book,
-    };
+    use bible::bible_enum::BibleEnum;
+    use book::book_components::{chapter_number::ChapterNumber, verse::Verse};
 
     use super::*;
 
@@ -55,13 +50,7 @@ mod tests {
 
         let verse = Verse::try_from(2u8).unwrap();
         let chapter_number = ChapterNumber::try_from(1u8).unwrap();
-        let chapter = Chapter::new(chapter_number, verse);
-        let mut book = Book {
-            name: "a book".try_into().unwrap(),
-            chapters: ChapterStore::new(),
-        };
-        book.chapters.add_chapter(chapter.clone());
-        let reading: Reading = Reading::new(book, chapter_number, verse).unwrap();
+        let reading: Reading = Reading::new(BibleEnum::Genesis, chapter_number, verse).unwrap();
 
         save_reading_in_file(path.clone(), &reading).unwrap();
 

@@ -1,11 +1,10 @@
-use bible::{bible_enum::BibleEnum, Bible};
+use bible::bible_enum::BibleEnum;
 use book::book_components::{chapter_number::ChapterNumber, verse::Verse};
 use book::Book;
 use clap::Args;
 use read::launch_reading;
 use read::reading::Reading;
 use std::str::FromStr;
-use std::sync::Arc;
 
 #[derive(Debug, Args)]
 #[command(version, about, long_about = None)]
@@ -27,19 +26,19 @@ pub enum SetError {
     ReadingInvalid,
 }
 
-pub fn main(bible: Arc<Bible>, path: std::path::PathBuf, args: &SetArgs) -> anyhow::Result<()> {
+pub fn main(path: std::path::PathBuf, args: &SetArgs) -> anyhow::Result<()> {
     let client = launch_reading(1, path);
 
     let reading: Result<Reading, SetError> = match client.get_reading_from_file() {
         Ok(existant_reading) => {
             // If a reading is getted by a file
             // Get Book if there is
-            let book: Book = match &args.book {
+            let book: BibleEnum = match &args.book {
                 Some(book_arg) => match BibleEnum::from_str(book_arg) {
-                    Ok(book_enum) => bible[book_enum].clone(),
-                    Err(_) => existant_reading.current_book().clone(),
+                    Ok(book_enum) => book_enum,
+                    Err(_) => *existant_reading.current_book(),
                 },
-                None => existant_reading.current_book().clone(),
+                None => *existant_reading.current_book(),
             };
             // Get Chapter if there is
             let chapter: ChapterNumber = match args.chapter {
@@ -68,12 +67,12 @@ pub fn main(bible: Arc<Bible>, path: std::path::PathBuf, args: &SetArgs) -> anyh
             let book = match &args.book {
                 Some(book_arg) => {
                     if let Ok(book_enum) = BibleEnum::from_str(book_arg) {
-                        bible[book_enum].clone()
+                        book_enum
                     } else {
-                        bible[BibleEnum::Genesis].clone()
+                        BibleEnum::Genesis
                     }
                 }
-                None => bible[BibleEnum::Genesis].clone(),
+                None => BibleEnum::Genesis,
             };
 
             let chapter = match args.chapter {
