@@ -80,15 +80,52 @@ impl NextPreviousArgs {
     }
 
     fn previous_book(&self, reading: &Reading) -> Reading {
-        todo!()
+        let new_book = match BibleEnum::iter()
+            .rev()
+            .skip_while(|&value| value > *reading.current_book())
+            .nth(self.count as usize)
+        {
+            Some(book) => book,
+            None => BibleEnum::Revelation,
+        };
+
+        Reading::new(new_book, 1u8.try_into().unwrap(), 1u8.try_into().unwrap()).unwrap()
     }
 
     fn previous_chapter(&self, reading: &Reading) -> Reading {
-        todo!()
+        let book: Book = BIBLE[*reading.current_book()].clone();
+
+        if let Some((new_chapter_number, _)) = book
+            .chapters
+            .range(1u8.try_into().unwrap()..*reading.current_chapter())
+            .nth_back((self.count - 1) as usize)
+        {
+            Reading::new(
+                *reading.current_book(),
+                *new_chapter_number,
+                1u8.try_into().unwrap(),
+            )
+            .unwrap()
+        } else {
+            self.next_book(reading)
+        }
     }
 
     fn previous_verse(&self, reading: &Reading) -> Reading {
-        todo!()
+        let value_verse: i16 = u8::from(reading.current_verse()) as i16;
+
+        let substract: i16 = value_verse - (self.count as i16);
+
+        if substract > 0i16 {
+            Reading::new(
+                *reading.current_book(),
+                *reading.current_chapter(),
+                (substract as u8).try_into().unwrap(),
+            )
+            .unwrap()
+        } else {
+            self.previous_chapter(reading)
+        }
     }
 
     pub fn next(&self, reading: &Reading) -> Reading {
