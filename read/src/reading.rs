@@ -4,6 +4,7 @@ use book::{
     Book,
 };
 use serde::{Deserialize, Serialize};
+use strum::IntoEnumIterator;
 
 #[derive(Debug, thiserror::Error, PartialEq)]
 pub enum ReadingError {
@@ -103,6 +104,116 @@ impl Reading {
         Ok(())
     }
 
+    pub fn next_book(&mut self, count: &u8) -> Result<(), ReadingError> {
+        let new_book = match BibleEnum::iter()
+            .skip_while(|&value| value < self.current_book)
+            .nth(*count as usize)
+        {
+            Some(book) => book,
+            None => BibleEnum::Genesis,
+        };
+        self.modify_reading(new_book, 1u8.try_into().unwrap(), 1u8.try_into().unwrap())?;
+
+        Ok(())
+    }
+
+    pub fn next_chapter(&mut self, count: &u8) -> Result<(), ReadingError> {
+        let book: Book = BIBLE[self.current_book].clone();
+        let last_chapter: ChapterNumber = *book
+            .chapters
+            .into_iter()
+            .last()
+            .unwrap()
+            .clone()
+            .get_chapter_number();
+
+        if let Some((new_chapter_number, _)) = book
+            .chapters
+            .range(self.current_chapter..last_chapter)
+            .nth(*count as usize)
+        {
+            self.modify_reading(
+                self.current_book,
+                *new_chapter_number,
+                1u8.try_into().unwrap(),
+            )?;
+        } else {
+            self.next_book(count)?;
+        }
+
+        Ok(())
+    }
+
+    pub fn next_verse(&mut self, count: &u8) -> Result<(), ReadingError> {
+        let book: Book = BIBLE[self.current_book].clone();
+        let max_chapter: Verse = *book.chapters[self.current_chapter].get_max_verse();
+
+        if u8::from(self.current_verse) + *count <= u8::from(max_chapter) {
+            self.modify_reading(
+                self.current_book,
+                self.current_chapter,
+                (u8::from(self.current_verse) + *count).try_into().unwrap(),
+            )?;
+        } else {
+            self.next_chapter(count)?;
+        }
+
+        Ok(())
+    }
+
+    pub fn previous_book(&mut self, count: &u8) -> Result<(), ReadingError> {
+        let new_book = match BibleEnum::iter()
+            .rev()
+            .skip_while(|&value| value > self.current_book)
+            .nth(*count as usize)
+        {
+            Some(book) => book,
+            None => BibleEnum::Revelation,
+        };
+
+        self.modify_reading(new_book, 1u8.try_into().unwrap(), 1u8.try_into().unwrap())?;
+
+        Ok(())
+    }
+
+    pub fn previous_chapter(&mut self, count: &u8) -> Result<(), ReadingError> {
+        let book: Book = BIBLE[self.current_book].clone();
+
+        if let Some((new_chapter_number, _)) = book
+            .chapters
+            .range(1u8.try_into().unwrap()..self.current_chapter)
+            .nth_back((*count - 1) as usize)
+        {
+            self.modify_reading(
+                self.current_book,
+                *new_chapter_number,
+                1u8.try_into().unwrap(),
+            )?;
+        } else {
+            self.previous_book(count)?;
+        }
+
+        Ok(())
+    }
+
+    pub fn previous_verse(&mut self, count: &u8) -> Result<(), ReadingError> {
+        let value_verse: i16 = u8::from(self.current_verse) as i16;
+
+        let substract: i16 = value_verse - (*count as i16);
+
+        if substract > 0i16 {
+            self.modify_reading(
+                self.current_book,
+                self.current_chapter,
+                (substract as u8).try_into().unwrap(),
+            )?;
+        } else {
+            self.previous_chapter(count)?;
+        }
+
+        Ok(())
+    }
+
     fn validate_fields(
         book: &BibleEnum,
         chapter: &ChapterNumber,
@@ -128,10 +239,7 @@ impl Reading {
 
 #[cfg(test)]
 mod tests {
-    use book::book_components::{
-        chapter::Chapter, chapter_number::ChapterNumber, chapter_store::ChapterStore,
-        name::BookName,
-    };
+    use book::book_components::{chapter_number::ChapterNumber, name::BookName};
 
     use super::*;
 
@@ -191,5 +299,15 @@ mod tests {
         let reading = Reading::new(BibleEnum::Genesis, chapter_number, verse).unwrap();
 
         assert_eq!(reading.to_string(), "Genesis 1:1");
+    }
+
+    #[test]
+    fn test_next() {
+        todo!();
+    }
+
+    #[test]
+    fn test_previous() {
+        todo!();
     }
 }

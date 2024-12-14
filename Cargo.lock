@@ -705,6 +705,7 @@ dependencies = [
  "book",
  "ron",
  "serde",
+ "strum",
  "thiserror 2.0.6",
 ]
 
@@ -720,7 +721,6 @@ dependencies = [
  "confy",
  "read",
  "serde",
- "strum",
  "thiserror 2.0.6",
  "tiberius",
 ]
@@ -1133,7 +1133,7 @@ version = "0.1.0"
 dependencies = [
  "book",
  "read",
- "thiserror 1.0.64",
+ "thiserror 2.0.6",
 ]
 
 [[package]]
