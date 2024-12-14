@@ -138,7 +138,7 @@ impl Reading {
                 1u8.try_into().unwrap(),
             )?;
         } else {
-            self.next_book(count)?;
+            self.next_book(&1u8)?;
         }
 
         Ok(())
@@ -155,7 +155,7 @@ impl Reading {
                 (u8::from(self.current_verse) + *count).try_into().unwrap(),
             )?;
         } else {
-            self.next_chapter(count)?;
+            self.next_chapter(&1u8)?;
         }
 
         Ok(())
@@ -190,7 +190,7 @@ impl Reading {
                 1u8.try_into().unwrap(),
             )?;
         } else {
-            self.previous_book(count)?;
+            self.previous_book(&1u8)?;
         }
 
         Ok(())
@@ -208,7 +208,7 @@ impl Reading {
                 (substract as u8).try_into().unwrap(),
             )?;
         } else {
-            self.previous_chapter(count)?;
+            self.previous_chapter(&1u8)?;
         }
 
         Ok(())
