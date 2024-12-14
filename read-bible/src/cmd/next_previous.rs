@@ -107,7 +107,7 @@ impl NextPreviousArgs {
             )
             .unwrap()
         } else {
-            self.next_book(reading)
+            self.previous_book(reading)
         }
     }
 
