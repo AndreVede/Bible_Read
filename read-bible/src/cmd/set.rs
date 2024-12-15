@@ -1,6 +1,5 @@
 use bible::bible_enum::BibleEnum;
 use book::book_components::{chapter_number::ChapterNumber, verse::Verse};
-use book::Book;
 use clap::Args;
 use read::launch_reading;
 use read::reading::Reading;

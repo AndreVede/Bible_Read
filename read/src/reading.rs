@@ -302,12 +302,183 @@ mod tests {
     }
 
     #[test]
-    fn test_next() {
-        todo!();
+    fn test_next_book() {
+        let mut reading = Reading::new(
+            BibleEnum::Genesis,
+            1u8.try_into().unwrap(),
+            1u8.try_into().unwrap(),
+        )
+        .unwrap();
+
+        let count: u8 = 1;
+
+        reading.next_book(&count).unwrap();
+
+        assert_eq!(reading.current_book(), &BibleEnum::Exodus);
+
+        // Test cycle
+        reading.set_current_book(BibleEnum::Revelation).unwrap();
+
+        reading.next_book(&count).unwrap();
+
+        assert_eq!(reading.current_book(), &BibleEnum::Genesis);
     }
 
     #[test]
-    fn test_previous() {
-        todo!();
+    fn test_next_chapter() {
+        let mut reading = Reading::new(
+            BibleEnum::Genesis,
+            1u8.try_into().unwrap(),
+            1u8.try_into().unwrap(),
+        )
+        .unwrap();
+
+        let mut count: u8 = 1;
+
+        reading.next_chapter(&count).unwrap();
+
+        assert_eq!(
+            reading.current_chapter(),
+            &ChapterNumber::try_from(2u8).unwrap()
+        );
+
+        // pass book
+        count = BIBLE[reading.current_book()]
+            .chapters
+            .into_iter()
+            .last()
+            .unwrap()
+            .get_chapter_number()
+            .into();
+
+        reading.next_chapter(&count).unwrap();
+
+        assert_eq!(reading.current_book(), &BibleEnum::Exodus);
+    }
+
+    #[test]
+    fn test_next_verse() {
+        let mut reading = Reading::new(
+            BibleEnum::Genesis,
+            1u8.try_into().unwrap(),
+            1u8.try_into().unwrap(),
+        )
+        .unwrap();
+
+        let mut count: u8 = 1;
+
+        reading.next_verse(&count).unwrap();
+
+        assert_eq!(reading.current_verse(), &Verse::try_from(2u8).unwrap());
+
+        // pass chapter
+        count = BIBLE[reading.current_book()].chapters[reading.current_chapter()]
+            .get_max_verse()
+            .into();
+
+        reading.next_verse(&count).unwrap();
+
+        assert_eq!(
+            reading.current_chapter(),
+            &ChapterNumber::try_from(2u8).unwrap()
+        );
+
+        // pass book
+        count = 1;
+
+        reading
+            .set_current_chapter(
+                *BIBLE[reading.current_book()]
+                    .chapters
+                    .into_iter()
+                    .last()
+                    .unwrap()
+                    .get_chapter_number(),
+            )
+            .unwrap();
+
+        reading
+            .set_current_verse(
+                *BIBLE[reading.current_book()].chapters[reading.current_chapter()].get_max_verse(),
+            )
+            .unwrap();
+
+        reading.next_verse(&count).unwrap();
+
+        assert_eq!(reading.current_book(), &BibleEnum::Exodus);
+    }
+
+    #[test]
+    fn test_previous_book() {
+        let mut reading = Reading::new(
+            BibleEnum::Exodus,
+            1u8.try_into().unwrap(),
+            1u8.try_into().unwrap(),
+        )
+        .unwrap();
+
+        let count: u8 = 1;
+
+        reading.previous_book(&count).unwrap();
+
+        assert_eq!(reading.current_book(), &BibleEnum::Genesis);
+
+        // Test cycle
+        reading.previous_book(&count).unwrap();
+
+        assert_eq!(reading.current_book(), &BibleEnum::Revelation);
+    }
+
+    #[test]
+    fn test_previous_chapter() {
+        let mut reading = Reading::new(
+            BibleEnum::Exodus,
+            2u8.try_into().unwrap(),
+            1u8.try_into().unwrap(),
+        )
+        .unwrap();
+
+        let count: u8 = 1;
+
+        reading.previous_chapter(&count).unwrap();
+
+        assert_eq!(
+            reading.current_chapter(),
+            &ChapterNumber::try_from(1u8).unwrap()
+        );
+
+        // pass book
+        reading.previous_chapter(&count).unwrap();
+
+        assert_eq!(reading.current_book(), &BibleEnum::Genesis);
+    }
+
+    #[test]
+    fn test_previous_verse() {
+        let mut reading = Reading::new(
+            BibleEnum::Exodus,
+            2u8.try_into().unwrap(),
+            2u8.try_into().unwrap(),
+        )
+        .unwrap();
+
+        let count: u8 = 1;
+
+        reading.previous_verse(&count).unwrap();
+
+        assert_eq!(reading.current_verse(), &Verse::try_from(1u8).unwrap());
+
+        // pass chapter
+        reading.previous_verse(&count).unwrap();
+
+        assert_eq!(
+            reading.current_chapter(),
+            &ChapterNumber::try_from(1u8).unwrap()
+        );
+
+        // pass book
+        reading.previous_verse(&count).unwrap();
+
+        assert_eq!(reading.current_book(), &BibleEnum::Genesis);
     }
 }

@@ -15,8 +15,10 @@ pub enum Direction {
 #[derive(Debug, Args)]
 #[command(version, about, long_about = None)]
 pub struct NextPreviousArgs {
+    /// The entity to pass
     #[arg(short, long, default_value_t, value_enum)]
     entity: ChoiceEntity,
+    /// The count of entity
     #[arg(short, long, default_value = "1")]
     count: u8,
 }
